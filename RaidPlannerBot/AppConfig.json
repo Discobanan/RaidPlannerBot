@@ -1,0 +1,6 @@
+﻿{
+  "planExpirationMinutes": 120,
+  "planPersisentStorageLocation": "C:\\temp\\plans",
+  "discordBotToken": "",
+  "debug": false,
+}
