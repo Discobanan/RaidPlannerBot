@@ -10,37 +10,30 @@ namespace RaidPlannerBot
 {
     class PlanCollection
     {
-        public readonly Dictionary<Tuple<ulong, ulong>, Plan> list;
+        public readonly Dictionary<Tuple<ulong, ulong, ulong>, Plan> list = new Dictionary<Tuple<ulong, ulong, ulong>, Plan>();
 
-        public PlanCollection(DiscordSocketClient discordClient)
+        public void Add(ulong guildId, ulong channelId, ulong messageId, Plan plan)
         {
-            list = new Dictionary<Tuple<ulong, ulong>, Plan>();
+            list.Add(new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId), plan);
 
-            LoadPlans(discordClient);
+            SavePlan(guildId, channelId, messageId, plan);
         }
 
-        public void Add(ulong channelId, ulong messageId, Plan plan)
+        public void Remove(ulong guildId, ulong channelId, ulong messageId)
         {
-            list.Add(new Tuple<ulong, ulong>(channelId, messageId), plan);
+            list.Remove(new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId));
 
-            SavePlan(channelId, messageId, plan);
+            RemoveSavedPlan(guildId, channelId, messageId);
         }
 
-        public void Remove(ulong channelId, ulong messageId)
+        public bool Contains(ulong guildId, ulong channelId, ulong messageId)
         {
-            list.Remove(new Tuple<ulong, ulong>(channelId, messageId));
-
-            RemoveSavedPlan(channelId, messageId);
+            return list.ContainsKey(new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId));
         }
 
-        public bool Contains(ulong channelId, ulong messageId)
+        public Plan Get(ulong guildId, ulong channelId, ulong messageId)
         {
-            return list.ContainsKey(new Tuple<ulong, ulong>(channelId, messageId));
-        }
-
-        public Plan Get(ulong channelId, ulong messageId)
-        {
-            return list[new Tuple<ulong, ulong>(channelId, messageId)];
+            return list[new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId)];
         }
 
         public Plan Edit(string message)
@@ -63,53 +56,63 @@ namespace RaidPlannerBot
             return plan;
         }
 
-        private void LoadPlans(DiscordSocketClient discordClient)
+        public void LoadPlansForGuild(SocketGuild guild)
         {
-            $"Loading plans...".Log();
+            $"Loading plans for guild {guild.Name}...".Log();
 
-            foreach (var channelDir in new DirectoryInfo(AppConfig.Shared.PlanPersisentStorageLocation).GetDirectories())
+            var count = 0;
+            var guildId = guild.Id;
+            var guildDir = new DirectoryInfo(Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString()));
+            foreach (var channelDir in guildDir.GetDirectories())
             {
-                if (ulong.TryParse(channelDir.Name, out ulong channelId))
+                var channelId = ulong.Parse(channelDir.Name);
+
+                var socketChannel = guild.GetChannel(channelId) as ISocketMessageChannel;
+
+                foreach (var messageFile in channelDir.GetFiles())
                 {
-                    ISocketMessageChannel socketChannel = (ISocketMessageChannel)discordClient.GetChannel(channelId);
-
-                    foreach (var messageFile in channelDir.GetFiles())
+                    if (ulong.TryParse(messageFile.Name, out ulong messageId))
                     {
-                        if (ulong.TryParse(messageFile.Name, out ulong messageId))
+                        var json = File.ReadAllText(messageFile.FullName);
+                        var plan = JsonConvert.DeserializeObject<Plan>(json);
+
+                        try
                         {
-                            var json = File.ReadAllText(messageFile.FullName);
-                            var plan = JsonConvert.DeserializeObject<Plan>(json);
-                            var message = (RestUserMessage)socketChannel.GetMessageAsync(messageId).Result;
+                            RestUserMessage message = (RestUserMessage)socketChannel.GetMessageAsync(messageId).Result;
+                            plan.Message = message;
+                            list.Add(new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId), plan);
                             // TODO: Repost the plan to discord, since reactions might have changed
-
-                            if (message != null)
-                            {
-                                plan.Message = message;
-
-                                list.Add(new Tuple<ulong, ulong>(channelId, messageId), plan);
-                            }
+                            count++;
+                        }
+                        catch (Exception e)
+                        {
+                            $"Could not read messageId {messageId} from channel {channelId} on guild {guildId}: {e.Message}".Log();
                         }
                     }
                 }
+                
             }
 
-            $"Loaded {list.Count()} plans.".Log();
+            $"Loaded {count} plan(s)".Log();
         }
 
-        private void SavePlan(ulong channelId, ulong messageId, Plan plan)
+        private void SavePlan(ulong guildId, ulong channelId, ulong messageId, Plan plan)
         {
-            var channelDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, channelId.ToString());
+            var guildDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString());
+            if (!Directory.Exists(guildDir)) Directory.CreateDirectory(guildDir);
+
+            var channelDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir.ToString(), channelId.ToString());
             if (!Directory.Exists(channelDir)) Directory.CreateDirectory(channelDir);
 
-            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, channelId.ToString(), messageId.ToString());
+            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir.ToString(), channelId.ToString(), messageId.ToString());
             if (File.Exists(planFile)) File.Delete(planFile);
             var json = JsonConvert.SerializeObject(plan);
             File.WriteAllText(planFile, json);
         }
 
-        private void RemoveSavedPlan(ulong channelId, ulong messageId)
+        private void RemoveSavedPlan(ulong guildId, ulong channelId, ulong messageId)
         {
-            var PlanFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, channelId.ToString(), messageId.ToString());
+            var PlanFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString(), channelId.ToString(), messageId.ToString());
             if (File.Exists(PlanFile)) File.Delete(PlanFile);
         }
 

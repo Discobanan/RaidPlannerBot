@@ -13,6 +13,7 @@ namespace RaidPlannerBot
     public class Bot
     {
         private const int RATE_LIMIT_DELAY = 1500;
+        private const int MINUTES_BETWEEN_EXPIRE_CHECKS = 5;
 
         private readonly DiscordSocketClient discordClient;
 
@@ -20,10 +21,9 @@ namespace RaidPlannerBot
         private readonly List<string> numberEmojis = new List<string>() { "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3" };
         private readonly string deleteEmoji = "\u274C";
 
-        private readonly Dictionary<ulong, ulong> guildChannels = new Dictionary<ulong, ulong>();
         private readonly Dictionary<ulong, Dictionary<string, Emote>> guildEmojis = new Dictionary<ulong, Dictionary<string, Emote>>();
 
-        private PlanCollection plans;
+        private PlanCollection plans = new PlanCollection();
 
         public Bot()
         {
@@ -46,8 +46,9 @@ namespace RaidPlannerBot
                     var allKeys = plans.list.Keys.ToList();
                     foreach (var tuple in allKeys)
                     {
-                        var channelId = tuple.Item1;
-                        var messageId = tuple.Item2;
+                        var guildId = tuple.Item1;
+                        var channelId = tuple.Item2;
+                        var messageId = tuple.Item3;
                         var plan = plans.list[tuple];
                         var planAgeMinutes = DateTime.Now.Subtract(plan.CreatedDate).TotalMinutes;
 
@@ -56,7 +57,7 @@ namespace RaidPlannerBot
                             $"Removing expired plan for {plan.Pokemon} at {plan.Location}, {plan.Time}!".Log();
 
                             plan.Message.DeleteAsync();
-                            plans.Remove(channelId, messageId);
+                            plans.Remove(guildId, channelId, messageId);
                         }
                         else
                         {
@@ -64,7 +65,7 @@ namespace RaidPlannerBot
                         }
                     }
 
-                    Thread.Sleep(1000 * 60);
+                    Thread.Sleep(1000 * 60 * MINUTES_BETWEEN_EXPIRE_CHECKS);
                 }
             });
         }
@@ -91,11 +92,7 @@ namespace RaidPlannerBot
 
         private Task BotClient_GuildAvailable(SocketGuild guild)
         {
-            plans = new PlanCollection(discordClient);
-
-            foreach (var channel in guild.Channels)
-                if (!guildChannels.ContainsKey(channel.Id))
-                    guildChannels.Add(channel.Id, guild.Id);
+            plans.LoadPlansForGuild(guild);
 
             if (!guildEmojis.ContainsKey(guild.Id))
                 guildEmojis.Add(guild.Id, new Dictionary<string, Emote>());
@@ -105,7 +102,7 @@ namespace RaidPlannerBot
                     guildEmojis[guild.Id].Add(emote.Name, emote);
 
             if (guildEmojis[guild.Id].Count() != 3)
-                $"Faction emojis are missing!".Log(); // TODO: Create them if they are missing
+                $"Guild {guild.Name} are missing some or all faction emojis!".Log(); // TODO: Create them if they are missing (API's not available in current version of Discord.Net)
 
             return Task.CompletedTask;
         }
@@ -124,7 +121,7 @@ namespace RaidPlannerBot
 
                 $"Creating plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
 
-                var guildId = guildChannels[message.Channel.Id];
+                var socketChannel = message.Channel as SocketGuildChannel;
 
                 var replyTask = Task.Run(async () =>
                 {
@@ -133,12 +130,12 @@ namespace RaidPlannerBot
 
                     RestUserMessage reply = await message.Channel.SendMessageAsync(string.Empty, false, plan.AsDiscordEmbed());
                     plan.Message = reply;
-                    plans.Add(message.Channel.Id, reply.Id, plan);
+                    plans.Add(socketChannel.Guild.Id, socketChannel.Id, reply.Id, plan);
                     await Task.Delay(RATE_LIMIT_DELAY);
 
                     foreach (var factionEmoji in factionEmojis)
                     {
-                        await reply.AddReactionAsync(guildEmojis[guildId][factionEmoji]);
+                        await reply.AddReactionAsync(guildEmojis[socketChannel.Guild.Id][factionEmoji]);
                         await Task.Delay(RATE_LIMIT_DELAY);
                     }
 
@@ -177,10 +174,12 @@ namespace RaidPlannerBot
 
         private Task DiscordClient_ReactionAdded(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
-            if (reaction.UserId == discordClient.CurrentUser.Id || !plans.Contains(channel.Id, message.Id))
+            var socketChannel = channel as SocketGuildChannel;
+
+            if (reaction.UserId == discordClient.CurrentUser.Id || !plans.Contains(socketChannel.Guild.Id, channel.Id, message.Id))
                 return Task.CompletedTask;
 
-            var plan = plans.Get(channel.Id, message.Id);
+            var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
             var username = reaction.User.Value.Username;
 
             if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
@@ -198,7 +197,7 @@ namespace RaidPlannerBot
             if (reaction.Emote.Name == deleteEmoji && username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
             {
                 plan.Message.DeleteAsync();
-                plans.Remove(channel.Id, message.Id);
+                plans.Remove(socketChannel.Guild.Id, channel.Id, message.Id);
 
                 $"{username} removed plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
             }
@@ -213,10 +212,12 @@ namespace RaidPlannerBot
 
         private Task DiscordClient_ReactionRemoved(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
-            if (reaction.UserId == discordClient.CurrentUser.Id || !plans.Contains(channel.Id, message.Id))
+            var socketChannel = channel as SocketGuildChannel;
+
+            if (reaction.UserId == discordClient.CurrentUser.Id || !plans.Contains(socketChannel.Guild.Id, channel.Id, message.Id))
                 return Task.CompletedTask;
 
-            var plan = plans.Get(channel.Id, message.Id);
+            var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
             var username = reaction.User.Value.Username;
 
             if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
