@@ -184,10 +184,10 @@ namespace RaidPlannerBot
             }
             else
             {
+                plans.Update(socketChannel.Guild.Id, channel.Id, message.Id, plan);
                 $"{username} added a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
             }
 
-            plans.Update(socketChannel.Guild.Id, channel.Id, message.Id, plan);
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
         }
 

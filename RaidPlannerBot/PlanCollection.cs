@@ -8,7 +8,7 @@ using Discord.Rest;
 
 namespace RaidPlannerBot
 {
-    class PlanCollection
+    public class PlanCollection
     {
         private readonly Dictionary<Tuple<ulong, ulong, ulong>, Plan> list = new Dictionary<Tuple<ulong, ulong, ulong>, Plan>();
 
@@ -88,11 +88,16 @@ namespace RaidPlannerBot
 
         public void LoadPlansForGuild(SocketGuild guild)
         {
+            var path = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guild.Id.ToString());
+
+            if (!Directory.Exists(path))
+                return;
+
             $"Loading plans for guild {guild.Name}...".Log();
 
+            var guildDir = new DirectoryInfo(path);
             var count = 0;
-            var guildId = guild.Id;
-            var guildDir = new DirectoryInfo(Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString()));
+
             foreach (var channelDir in guildDir.GetDirectories())
             {
                 var channelId = ulong.Parse(channelDir.Name);
@@ -110,13 +115,13 @@ namespace RaidPlannerBot
                         {
                             RestUserMessage message = (RestUserMessage)socketChannel.GetMessageAsync(messageId).Result;
                             plan.Message = message;
-                            list.Add(new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId), plan);
+                            list.Add(new Tuple<ulong, ulong, ulong>(guild.Id, channelId, messageId), plan);
                             // TODO: Repost the plan to discord, since reactions might have changed
                             count++;
                         }
                         catch (Exception e)
                         {
-                            $"Could not read messageId {messageId} from channel {channelId} on guild {guildId}: {e.Message}".Log();
+                            $"Could not read messageId {messageId} from channel {channelId} on guild {guild.Id}: {e.Message}".Log();
                         }
                     }
                 }
@@ -131,19 +136,23 @@ namespace RaidPlannerBot
             var guildDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString());
             if (!Directory.Exists(guildDir)) Directory.CreateDirectory(guildDir);
 
-            var channelDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir.ToString(), channelId.ToString());
+            var channelDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir, channelId.ToString());
             if (!Directory.Exists(channelDir)) Directory.CreateDirectory(channelDir);
 
-            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir.ToString(), channelId.ToString(), messageId.ToString());
+            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir, channelId.ToString(), messageId.ToString());
             if (File.Exists(planFile)) File.Delete(planFile);
             var json = JsonConvert.SerializeObject(plan);
             File.WriteAllText(planFile, json);
+
+            $"Wrote plan file {planFile}".Log(true);
         }
 
         private void RemoveSavedPlan(ulong guildId, ulong channelId, ulong messageId)
         {
-            var PlanFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString(), channelId.ToString(), messageId.ToString());
-            if (File.Exists(PlanFile)) File.Delete(PlanFile);
+            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString(), channelId.ToString(), messageId.ToString());
+            if (File.Exists(planFile)) File.Delete(planFile);
+
+            $"Deleted plan file {planFile}".Log(true);
         }
 
     }
