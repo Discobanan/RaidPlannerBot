@@ -18,6 +18,9 @@ namespace RaidPlannerBot
         [JsonProperty("discordBotToken")]
         public string DiscordBotToken { get; set; }
 
+        [JsonProperty("discordPlaying")]
+        public string DiscordPlaying { get; set; }
+
         [JsonProperty("debug")]
         public bool Debug { get; set; }
 

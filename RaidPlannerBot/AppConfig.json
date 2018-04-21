@@ -4,4 +4,5 @@
   "discordBotToken": "",
   "debug": false,
   "thumbnailUrl": "https://www.teamrocket.nu/static/pokemons/100x100/{pokemonId}.png",
+  "discordPlaying": "Pokemon Go",
 }

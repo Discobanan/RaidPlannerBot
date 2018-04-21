@@ -73,7 +73,7 @@ namespace RaidPlannerBot
         {
             discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
             discordClient.StartAsync().Wait();
-            discordClient.SetGameAsync("Pokemon Go");
+            discordClient.SetGameAsync(AppConfig.Shared.DiscordPlaying);
 
             while (Console.ReadKey(true).Key != ConsoleKey.Escape)
                 "Press ESC to logout the bot!".Log();
