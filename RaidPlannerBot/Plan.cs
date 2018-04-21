@@ -62,7 +62,7 @@ namespace RaidPlannerBot
             embedBuilder.WithColor(Color.Red);
             embedBuilder.WithTitle(this.Pokemon);
             embedBuilder.WithDescription($"Time: {this.Time}\nLocation: {this.Location}");
-            embedBuilder.WithFooter($"Id: {this.Id} | Created by: {this.Author}#{this.Discriminator} | Total: {this.Total}");
+            embedBuilder.WithFooter($"Total: {this.Total} | Id: {this.Id} | Created by: {this.Author}#{this.Discriminator}");
 
             var pokemonName = this.Pokemon.ToLower();
             if (Pokemons.Name.ContainsKey(pokemonName))
