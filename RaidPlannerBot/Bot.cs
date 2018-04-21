@@ -105,27 +105,34 @@ namespace RaidPlannerBot
 
                 var replyTask = Task.Run(async () =>
                 {
-                    await message.DeleteAsync();
-                    await Task.Delay(RATE_LIMIT_DELAY);
-
-                    RestUserMessage reply = await message.Channel.SendMessageAsync(string.Empty, false, plan.AsDiscordEmbed());
-                    plan.Message = reply;
-                    plans.Add(socketChannel.Guild.Id, socketChannel.Id, reply.Id, plan);
-                    await Task.Delay(RATE_LIMIT_DELAY);
-
-                    foreach (var factionEmoji in factionEmojis)
+                    try
                     {
-                        await reply.AddReactionAsync(guildEmojis[socketChannel.Guild.Id][factionEmoji]);
+                        await message.DeleteAsync();
                         await Task.Delay(RATE_LIMIT_DELAY);
-                    }
 
-                    foreach (var numberEmoji in numberEmojis)
+                        RestUserMessage reply = await message.Channel.SendMessageAsync(string.Empty, false, plan.AsDiscordEmbed());
+                        plan.Message = reply;
+                        plans.Add(socketChannel.Guild.Id, socketChannel.Id, reply.Id, plan);
+                        await Task.Delay(RATE_LIMIT_DELAY);
+
+                        foreach (var factionEmoji in factionEmojis)
+                        {
+                            await reply.AddReactionAsync(guildEmojis[socketChannel.Guild.Id][factionEmoji]);
+                            await Task.Delay(RATE_LIMIT_DELAY);
+                        }
+
+                        foreach (var numberEmoji in numberEmojis)
+                        {
+                            await reply.AddReactionAsync(new Emoji(numberEmoji));
+                            await Task.Delay(RATE_LIMIT_DELAY);
+                        }
+
+                        await reply.AddReactionAsync(new Emoji(deleteEmoji));
+                    }
+                    catch(Exception e)
                     {
-                        await reply.AddReactionAsync(new Emoji(numberEmoji));
-                        await Task.Delay(RATE_LIMIT_DELAY);
+                        $"Exception when replying to message: {e.Message}".Log();
                     }
-
-                    await reply.AddReactionAsync(new Emoji(deleteEmoji));
                 });
             }
 
