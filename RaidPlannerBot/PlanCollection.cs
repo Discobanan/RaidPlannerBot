@@ -79,10 +79,6 @@ namespace RaidPlannerBot
                     plan.Message.DeleteAsync();
                     Remove(guildId, channelId, messageId);
                 }
-                else
-                {
-                    $"Plan for {plan.Pokemon} at {plan.Location}, {plan.Time} is only {Math.Round(planAgeMinutes)} minutes old, won't be removed".Log(true);
-                }
             }
         }
 
