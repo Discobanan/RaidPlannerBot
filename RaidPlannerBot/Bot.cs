@@ -180,7 +180,8 @@ namespace RaidPlannerBot
                 return Task.CompletedTask;
 
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
-            var username = reaction.User.Value.Username;
+            var user = reaction.User.Value as SocketGuildUser;
+            var username = user.Nickname;
 
             if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
                 plan.Mystic.Add(username);
@@ -194,7 +195,7 @@ namespace RaidPlannerBot
                     plan.Unknowns = plan.Unknowns + (i + 1);
 
             // TODO: Allow some role to also delete plans, not only the creator
-            if (reaction.Emote.Name == deleteEmoji && username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
+            if (reaction.Emote.Name == deleteEmoji && user.Username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
             {
                 plan.Message.DeleteAsync();
                 plans.Remove(socketChannel.Guild.Id, channel.Id, message.Id);
@@ -218,7 +219,8 @@ namespace RaidPlannerBot
                 return Task.CompletedTask;
 
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
-            var username = reaction.User.Value.Username;
+            var user = reaction.User.Value as SocketGuildUser;
+            var username = user.Nickname;
 
             if (reaction.Emote.Name == "mystic" && plan.Mystic.Contains(username))
                 plan.Mystic.Remove(username);
