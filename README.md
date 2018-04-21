@@ -24,6 +24,14 @@ This is the first project I've put up on github, and pretty much the first open 
 * Where it says "Client ID:", copy that id
 * Go to the following link, but replace `CLIENT_ID_GOES_HERE` with the id that you copied in the previous step: https://discordapp.com/oauth2/authorize?client_id=CLIENT_ID_GOES_HERE&scope=bot&permissions=1342532672
 
+### Configuring discord emojis
+
+The bot requires 3 emojis to work properly, and if you don't already have them, you need to add them manually.
+
+* In discord, click Server settings > Emoji
+* Press "Upload Emoji", and select one of the images in the Emoji-folder of this project
+* Do the same thing with the other two
+
 ### Configuring RainPlannerBot
 
 * Go to https://discordapp.com/developers/applications/me
