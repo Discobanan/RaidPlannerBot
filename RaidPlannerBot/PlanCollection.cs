@@ -19,6 +19,11 @@ namespace RaidPlannerBot
             SavePlan(guildId, channelId, messageId, plan);
         }
 
+        public void Update(ulong guildId, ulong channelId, ulong messageId, Plan plan)
+        {
+            SavePlan(guildId, channelId, messageId, plan);
+        }
+
         public void Remove(ulong guildId, ulong channelId, ulong messageId)
         {
             list.Remove(new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId));
