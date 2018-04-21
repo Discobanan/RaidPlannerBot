@@ -220,11 +220,11 @@ namespace RaidPlannerBot
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
             var username = reaction.User.Value.Username;
 
-            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
+            if (reaction.Emote.Name == "mystic" && plan.Mystic.Contains(username))
                 plan.Mystic.Remove(username);
-            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(username))
+            else if (reaction.Emote.Name == "valor" && plan.Valor.Contains(username))
                 plan.Valor.Remove(username);
-            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(username))
+            else if (reaction.Emote.Name == "instinct" && plan.Instinct.Contains(username))
                 plan.Instinct.Remove(username);
 
             for (int i = 0; i < numberEmojis.Count; i++)
