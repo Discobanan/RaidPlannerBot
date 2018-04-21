@@ -40,30 +40,10 @@ namespace RaidPlannerBot
             {
                 while (true)
                 {
-                    if (plans == null || plans.list == null)
+                    if (plans == null)
                         continue;
 
-                    var allKeys = plans.list.Keys.ToList();
-                    foreach (var tuple in allKeys)
-                    {
-                        var guildId = tuple.Item1;
-                        var channelId = tuple.Item2;
-                        var messageId = tuple.Item3;
-                        var plan = plans.list[tuple];
-                        var planAgeMinutes = DateTime.Now.Subtract(plan.CreatedDate).TotalMinutes;
-
-                        if (planAgeMinutes > AppConfig.Shared.PlanExpirationMinutes)
-                        {
-                            $"Removing expired plan for {plan.Pokemon} at {plan.Location}, {plan.Time}!".Log();
-
-                            plan.Message.DeleteAsync();
-                            plans.Remove(guildId, channelId, messageId);
-                        }
-                        else
-                        {
-                            $"Plan for {plan.Pokemon} at {plan.Location}, {plan.Time} is only {Math.Round(planAgeMinutes)} minutes old, won't be removed".Log(true);
-                        }
-                    }
+                    plans.DeleteExpired();
 
                     Thread.Sleep(1000 * 60 * MINUTES_BETWEEN_EXPIRE_CHECKS);
                 }

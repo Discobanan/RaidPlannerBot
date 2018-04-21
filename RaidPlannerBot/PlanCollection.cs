@@ -10,7 +10,7 @@ namespace RaidPlannerBot
 {
     class PlanCollection
     {
-        public readonly Dictionary<Tuple<ulong, ulong, ulong>, Plan> list = new Dictionary<Tuple<ulong, ulong, ulong>, Plan>();
+        private readonly Dictionary<Tuple<ulong, ulong, ulong>, Plan> list = new Dictionary<Tuple<ulong, ulong, ulong>, Plan>();
 
         public void Add(ulong guildId, ulong channelId, ulong messageId, Plan plan)
         {
@@ -54,6 +54,31 @@ namespace RaidPlannerBot
                 plan.Time = newTime;
 
             return plan;
+        }
+
+        public void DeleteExpired()
+        {
+            var allKeys = list.Keys.ToList();
+            foreach (var tuple in allKeys)
+            {
+                var guildId = tuple.Item1;
+                var channelId = tuple.Item2;
+                var messageId = tuple.Item3;
+                var plan = list[tuple];
+                var planAgeMinutes = DateTime.Now.Subtract(plan.CreatedDate).TotalMinutes;
+
+                if (planAgeMinutes > AppConfig.Shared.PlanExpirationMinutes)
+                {
+                    $"Removing expired plan for {plan.Pokemon} at {plan.Location}, {plan.Time}!".Log();
+
+                    plan.Message.DeleteAsync();
+                    Remove(guildId, channelId, messageId);
+                }
+                else
+                {
+                    $"Plan for {plan.Pokemon} at {plan.Location}, {plan.Time} is only {Math.Round(planAgeMinutes)} minutes old, won't be removed".Log(true);
+                }
+            }
         }
 
         public void LoadPlansForGuild(SocketGuild guild)
