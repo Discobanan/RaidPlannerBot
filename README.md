@@ -1,7 +1,7 @@
 # RainPlannerBot
 This bot was inspired by [DeliBot](https://github.com/OfficialWiddin/DeliBot), but because of a lot of issues with that bot, I decided to make my own.
 
-The bots purpose is to simplify raid planning in Pokemon Go, by allowing the users of a discord community to create plans, which others can sign up.
+The bots purpose is to simplify raid planning in Pokemon Go, by allowing the users of a discord community to create plans, which others can sign up for.
 
 The bot is written in C# using .NET Core, so in theory it can run on other platforms than Windows, but it hasn't been tested yet.
 
@@ -57,4 +57,8 @@ To edit the time of an existing plan, type `!edit id time`, where `id` is the id
 
 ### Delete raid plan
 
-Only the creator of the plan can delete it, and it is done by pressing the red-cross-reaction.
+Only the creator of the plan can delete it, and it is done by pressing the red-cross-reaction. Plans will however be automatically deleted after the time set in the config, default is 2 hours.
+
+## Support
+
+Join the discord server at https://discord.gg/hSwJNAb to try the bot out or to get help.
