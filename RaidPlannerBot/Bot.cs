@@ -14,7 +14,6 @@ namespace RaidPlannerBot
     {
         private const int RATE_LIMIT_DELAY = 1500;
 
-        private readonly AppConfig config;
         private readonly DiscordSocketClient discordClient;
 
         private readonly List<string> factionEmojis = new List<string>() { "mystic", "valor", "instinct" };
@@ -26,10 +25,8 @@ namespace RaidPlannerBot
 
         private PlanCollection plans;
 
-        public Bot(AppConfig config)
+        public Bot()
         {
-            this.config = config;
-
             discordClient = new DiscordSocketClient();
 
             discordClient.Log += BotClient_Log;
@@ -54,16 +51,16 @@ namespace RaidPlannerBot
                         var plan = plans.list[tuple];
                         var planAgeMinutes = DateTime.Now.Subtract(plan.CreatedDate).TotalMinutes;
 
-                        if (planAgeMinutes > config.PlanExpirationMinutes)
+                        if (planAgeMinutes > AppConfig.Shared.PlanExpirationMinutes)
                         {
                             $"Removing expired plan for {plan.Pokemon} at {plan.Location}, {plan.Time}!".Log();
 
                             plan.Message.DeleteAsync();
                             plans.Remove(channelId, messageId);
                         }
-                        else if (config.Debug)
+                        else
                         {
-                            $"plan for {plan.Pokemon} at {plan.Location}, {plan.Time} is only {planAgeMinutes} minutes old.".Log();
+                            $"Plan for {plan.Pokemon} at {plan.Location}, {plan.Time} is only {Math.Round(planAgeMinutes)} minutes old, won't be removed".Log(true);
                         }
                     }
 
@@ -74,7 +71,7 @@ namespace RaidPlannerBot
 
         public void Start()
         {
-            discordClient.LoginAsync(TokenType.Bot, config.DiscordBotToken).Wait();
+            discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
             discordClient.StartAsync().Wait();
             discordClient.SetGameAsync("Pokemon Go");
 
@@ -94,7 +91,7 @@ namespace RaidPlannerBot
 
         private Task BotClient_GuildAvailable(SocketGuild guild)
         {
-            plans = new PlanCollection(config.PlanPersisentStorageLocation, discordClient);
+            plans = new PlanCollection(discordClient);
 
             foreach (var channel in guild.Channels)
                 if (!guildChannels.ContainsKey(channel.Id))
@@ -124,6 +121,8 @@ namespace RaidPlannerBot
                     message.DeleteAsync();
                     return Task.CompletedTask;
                 }
+
+                $"Creating plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
 
                 var guildId = guildChannels[message.Channel.Id];
 
@@ -163,6 +162,8 @@ namespace RaidPlannerBot
                     return Task.CompletedTask;
                 }
 
+                $"Editing plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
+
                 var editTask = Task.Run(async () =>
                 {
                     await message.DeleteAsync();
@@ -180,23 +181,30 @@ namespace RaidPlannerBot
                 return Task.CompletedTask;
 
             var plan = plans.Get(channel.Id, message.Id);
+            var username = reaction.User.Value.Username;
 
-            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(reaction.User.Value.Username))
-                plan.Mystic.Add(reaction.User.Value.Username);
-            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(reaction.User.Value.Username))
-                plan.Valor.Add(reaction.User.Value.Username);
-            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(reaction.User.Value.Username))
-                plan.Instinct.Add(reaction.User.Value.Username);
+            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
+                plan.Mystic.Add(username);
+            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(username))
+                plan.Valor.Add(username);
+            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(username))
+                plan.Instinct.Add(username);
 
             for(int i = 0; i < numberEmojis.Count; i++)
                 if (reaction.Emote.Name == numberEmojis[i])
                     plan.Unknowns = plan.Unknowns + (i + 1);
 
             // TODO: Allow some role to also delete plans, not only the creator
-            if (reaction.Emote.Name == deleteEmoji && reaction.User.Value.Username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
+            if (reaction.Emote.Name == deleteEmoji && username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
             {
                 plan.Message.DeleteAsync();
                 plans.Remove(channel.Id, message.Id);
+
+                $"{username} removed plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
+            }
+            else
+            {
+                $"{username} added a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
             }
 
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
@@ -209,22 +217,23 @@ namespace RaidPlannerBot
                 return Task.CompletedTask;
 
             var plan = plans.Get(channel.Id, message.Id);
+            var username = reaction.User.Value.Username;
 
-            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(reaction.User.Value.Username))
-                plan.Mystic.Remove(reaction.User.Value.Username);
-            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(reaction.User.Value.Username))
-                plan.Valor.Remove(reaction.User.Value.Username);
-            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(reaction.User.Value.Username))
-                plan.Instinct.Remove(reaction.User.Value.Username);
+            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
+                plan.Mystic.Remove(username);
+            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(username))
+                plan.Valor.Remove(username);
+            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(username))
+                plan.Instinct.Remove(username);
 
             for (int i = 0; i < numberEmojis.Count; i++)
                 if (reaction.Emote.Name == numberEmojis[i])
                     plan.Unknowns = plan.Unknowns - (i + 1);
 
+            $"{username} removed a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
+
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
         }
-
-
 
     }
 }

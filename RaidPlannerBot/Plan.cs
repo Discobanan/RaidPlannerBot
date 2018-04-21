@@ -66,7 +66,13 @@ namespace RaidPlannerBot
 
             var pokemonName = this.Pokemon.ToLower();
             if (Pokemons.Name.ContainsKey(pokemonName))
-                embedBuilder.WithThumbnailUrl($"https://www.teamrocket.nu/static/pokemons/100x100/{Pokemons.Name[pokemonName]}.png");
+            {
+                var thumbnailUrl = AppConfig.Shared.ThumbnailUrl.Replace("{pokemonId}", Pokemons.Name[pokemonName].ToString());
+                if (Uri.IsWellFormedUriString(thumbnailUrl, UriKind.Absolute))
+                {
+                    embedBuilder.WithThumbnailUrl(thumbnailUrl);
+                }
+            }
 
             embedBuilder.AddField(new EmbedFieldBuilder()
             {
@@ -89,7 +95,7 @@ namespace RaidPlannerBot
                 IsInline = true
             });
 
-            return embedBuilder; // Return null if message doesn't contain all it must in order to build a proper embed-message
+            return embedBuilder;
         }
     }
 }

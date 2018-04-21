@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.IO;
 using Newtonsoft.Json;
 
 namespace RaidPlannerBot
@@ -13,10 +12,55 @@ namespace RaidPlannerBot
         [JsonProperty("planPersisentStorageLocation")]
         public string PlanPersisentStorageLocation { get; set; }
 
+        [JsonProperty("thumbnailUrl")]
+        public string ThumbnailUrl { get; set; }
+
         [JsonProperty("discordBotToken")]
         public string DiscordBotToken { get; set; }
 
         [JsonProperty("debug")]
         public bool Debug { get; set; }
+
+        public static AppConfig Shared;
+
+        public static bool Load(string configFile)
+        {
+            if (!File.Exists(configFile))
+            {
+                $"Config file {configFile} not found!".Log();
+                return false;
+            }
+
+            AppConfig config;
+            try
+            {
+                config = JsonConvert.DeserializeObject<AppConfig>(File.ReadAllText(configFile));
+            }
+            catch (Exception e)
+            {
+                $"Error when loading config file {configFile}: {e.Message}".Log();
+                return false;
+            }
+
+            try
+            {
+                if (!Directory.Exists(config.PlanPersisentStorageLocation))
+                    Directory.CreateDirectory(config.PlanPersisentStorageLocation);
+            }
+            catch (Exception e)
+            {
+                $"Error when creating persistant storage location at {config.PlanPersisentStorageLocation}: {e.Message}".Log();
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.DiscordBotToken))
+            {
+                $"Config-file is missing the discord token!".Log();
+                return false;
+            }
+
+            Shared = config;
+            return true;
+        }
     }
 }

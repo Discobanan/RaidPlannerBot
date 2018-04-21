@@ -10,13 +10,10 @@ namespace RaidPlannerBot
 {
     class PlanCollection
     {
-        private readonly string persistantStorageLocation;
         public readonly Dictionary<Tuple<ulong, ulong>, Plan> list;
 
-        public PlanCollection(string persistantStorageLocation, DiscordSocketClient discordClient)
+        public PlanCollection(DiscordSocketClient discordClient)
         {
-            this.persistantStorageLocation = persistantStorageLocation;
-
             list = new Dictionary<Tuple<ulong, ulong>, Plan>();
 
             LoadPlans(discordClient);
@@ -68,7 +65,9 @@ namespace RaidPlannerBot
 
         private void LoadPlans(DiscordSocketClient discordClient)
         {
-            foreach (var channelDir in new DirectoryInfo(persistantStorageLocation).GetDirectories())
+            $"Loading plans...".Log();
+
+            foreach (var channelDir in new DirectoryInfo(AppConfig.Shared.PlanPersisentStorageLocation).GetDirectories())
             {
                 if (ulong.TryParse(channelDir.Name, out ulong channelId))
                 {
@@ -93,14 +92,16 @@ namespace RaidPlannerBot
                     }
                 }
             }
+
+            $"Loaded {list.Count()} plans.".Log();
         }
 
         private void SavePlan(ulong channelId, ulong messageId, Plan plan)
         {
-            var channelDir = Path.Combine(persistantStorageLocation, channelId.ToString());
+            var channelDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, channelId.ToString());
             if (!Directory.Exists(channelDir)) Directory.CreateDirectory(channelDir);
 
-            var planFile = Path.Combine(persistantStorageLocation, channelId.ToString(), messageId.ToString());
+            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, channelId.ToString(), messageId.ToString());
             if (File.Exists(planFile)) File.Delete(planFile);
             var json = JsonConvert.SerializeObject(plan);
             File.WriteAllText(planFile, json);
@@ -108,7 +109,7 @@ namespace RaidPlannerBot
 
         private void RemoveSavedPlan(ulong channelId, ulong messageId)
         {
-            var PlanFile = Path.Combine(persistantStorageLocation, channelId.ToString(), messageId.ToString());
+            var PlanFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, channelId.ToString(), messageId.ToString());
             if (File.Exists(PlanFile)) File.Delete(PlanFile);
         }
 
