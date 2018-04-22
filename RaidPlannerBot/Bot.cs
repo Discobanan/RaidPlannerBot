@@ -168,7 +168,7 @@ namespace RaidPlannerBot
 
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
             var user = reaction.User.Value as SocketGuildUser;
-            var username = user.Nickname;
+            var username = string.IsNullOrWhiteSpace(user.Nickname) ? user.Username : user.Nickname;
 
             if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
                 plan.Mystic.Add(username);
@@ -208,7 +208,7 @@ namespace RaidPlannerBot
 
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
             var user = reaction.User.Value as SocketGuildUser;
-            var username = user.Nickname;
+            var username = string.IsNullOrWhiteSpace(user.Nickname) ? user.Username : user.Nickname;
 
             if (reaction.Emote.Name == "mystic" && plan.Mystic.Contains(username))
                 plan.Mystic.Remove(username);
