@@ -14,6 +14,7 @@ namespace RaidPlannerBot
 
         public string Pokemon { get; set; }
         public string Time { get; set; }
+        public string Day { get; set; }
         public string Location { get; set; }
         public string Author { get; set; }
         public string Discriminator { get; set; }
@@ -21,6 +22,7 @@ namespace RaidPlannerBot
         public List<string> Valor { get; set; }
         public List<string> Instinct { get; set; }
         public int Unknowns { get; set; }
+        public bool IsExRaid { get; set; }
 
         [JsonIgnore]
         public RestUserMessage Message { get; set; }
@@ -39,30 +41,39 @@ namespace RaidPlannerBot
             this.Instinct = new List<string>();
         }
 
-        public static Plan Create(string message, string author, string discriminator)
+        public static Plan Create(string message, string author, string discriminator, bool isExRaid)
         {
             var messageParts = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 
-            if (messageParts.Length < 4)
+            if ((!isExRaid && messageParts.Length < 4) || (isExRaid && messageParts.Length < 5))
                 return null;
 
             return new Plan()
             {
                 Pokemon = messageParts[1],
                 Time = messageParts[2],
-                Location = String.Join(" ", messageParts.Skip(3).ToArray()),
+                Location = String.Join(" ", messageParts.Skip(isExRaid ? 4 : 3).ToArray()),
                 Author = author,
                 Discriminator = discriminator,
+                IsExRaid = isExRaid,
+                Day = isExRaid ? messageParts[3] : null,
             };
         }
 
         public Embed AsDiscordEmbed()
         {
+            var title = IsExRaid ? $"EX-RAID: {this.Pokemon}" : $"Boss: {this.Pokemon}";
+
+            var description = $"Time: {this.Time}\nLocation: {this.Location}";
+            if (IsExRaid) description += $"\nDay: {this.Day}";
+
+            var footer = $"Total: {this.Total} | Id: {this.Id} | Created by: {this.Author}#{this.Discriminator}";
+
             var embedBuilder = new EmbedBuilder();
             embedBuilder.WithColor(Color.Red);
-            embedBuilder.WithTitle(this.Pokemon);
-            embedBuilder.WithDescription($"Time: {this.Time}\nLocation: {this.Location}");
-            embedBuilder.WithFooter($"Total: {this.Total} | Id: {this.Id} | Created by: {this.Author}#{this.Discriminator}");
+            embedBuilder.WithTitle(title);
+            embedBuilder.WithDescription(description);
+            embedBuilder.WithFooter(footer);
 
             var pokemonName = this.Pokemon.ToLower();
             if (Pokemons.Name.ContainsKey(pokemonName))

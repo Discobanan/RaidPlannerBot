@@ -70,13 +70,17 @@ namespace RaidPlannerBot
                 var channelId = tuple.Item2;
                 var messageId = tuple.Item3;
                 var plan = list[tuple];
-                var planAgeMinutes = DateTime.Now.Subtract(plan.CreatedDate).TotalMinutes;
 
-                if (planAgeMinutes > AppConfig.Shared.PlanExpirationMinutes)
+                var planAge = DateTime.Now.Subtract(plan.CreatedDate);
+                var isExpiredRaid = !plan.IsExRaid && planAge.TotalMinutes > AppConfig.Shared.PlanExpirationMinutes;
+                var isExpiredExRaid = plan.IsExRaid && planAge.TotalDays > AppConfig.Shared.ExPlanExpirationDays;
+
+                if (isExpiredRaid || isExpiredExRaid)
                 {
                     $"Removing expired plan for {plan.Pokemon} at {plan.Location}, {plan.Time}!".Log();
 
                     Remove(guildId, channelId, messageId);
+
                     try { plan.Message.DeleteAsync(); }
                     catch(Exception) { } // Don't care if it fails, it have probably been deleted manually
                 }

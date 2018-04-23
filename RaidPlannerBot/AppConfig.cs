@@ -9,6 +9,9 @@ namespace RaidPlannerBot
         [JsonProperty("planExpirationMinutes")]
         public int PlanExpirationMinutes { get; set; }
 
+        [JsonProperty("exPlanExpirationDays")]
+        public int ExPlanExpirationDays { get; set; }
+
         [JsonProperty("planPersisentStorageLocation")]
         public string PlanPersisentStorageLocation { get; set; }
 
