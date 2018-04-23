@@ -33,7 +33,7 @@ namespace RaidPlannerBot
         {
             if (!File.Exists(configFile))
             {
-                $"Config file {configFile} not found!".Log();
+                $"Config file {configFile} not found! Open {System.IO.Directory.GetCurrentDirectory()}, rename AppConfig.example.json to AppConfig.json, and edit it to match your desired configuration.".Log();
                 return false;
             }
 

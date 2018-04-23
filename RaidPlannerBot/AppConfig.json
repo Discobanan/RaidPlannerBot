@@ -1,9 +1,0 @@
-﻿{
-  "planExpirationMinutes": 120,
-  "planPersisentStorageLocation": "C:\\temp\\plans",
-  "thumbnailUrl": "https://www.teamrocket.nu/static/pokemons/100x100/{pokemonId}.png",
-  "discordBotToken": "",
-  "discordPlaying": "Pokemon Go",
-  "logFile": "C:\\temp\\RaidPlannerBot.log",
-  "debug": true,
-}
