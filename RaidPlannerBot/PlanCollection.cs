@@ -89,7 +89,7 @@ namespace RaidPlannerBot
 
         public void LoadPlansForGuild(SocketGuild guild)
         {
-            var path = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guild.Id.ToString());
+            var path = Path.Combine(AppConfig.Shared.PersisentStorageLocation, guild.Id.ToString());
 
             if (!Directory.Exists(path))
                 return;
@@ -134,13 +134,13 @@ namespace RaidPlannerBot
 
         private void SavePlan(ulong guildId, ulong channelId, ulong messageId, Plan plan)
         {
-            var guildDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString());
+            var guildDir = Path.Combine(AppConfig.Shared.PersisentStorageLocation, guildId.ToString());
             if (!Directory.Exists(guildDir)) Directory.CreateDirectory(guildDir);
 
-            var channelDir = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir, channelId.ToString());
+            var channelDir = Path.Combine(AppConfig.Shared.PersisentStorageLocation, guildDir, channelId.ToString());
             if (!Directory.Exists(channelDir)) Directory.CreateDirectory(channelDir);
 
-            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildDir, channelId.ToString(), messageId.ToString());
+            var planFile = Path.Combine(AppConfig.Shared.PersisentStorageLocation, guildDir, channelId.ToString(), messageId.ToString());
             if (File.Exists(planFile)) File.Delete(planFile);
             var json = JsonConvert.SerializeObject(plan);
             File.WriteAllText(planFile, json);
@@ -150,7 +150,7 @@ namespace RaidPlannerBot
 
         private void RemoveSavedPlan(ulong guildId, ulong channelId, ulong messageId)
         {
-            var planFile = Path.Combine(AppConfig.Shared.PlanPersisentStorageLocation, guildId.ToString(), channelId.ToString(), messageId.ToString());
+            var planFile = Path.Combine(AppConfig.Shared.PersisentStorageLocation, guildId.ToString(), channelId.ToString(), messageId.ToString());
             if (File.Exists(planFile)) File.Delete(planFile);
 
             $"Deleted plan file {planFile}".Log(true);

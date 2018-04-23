@@ -12,9 +12,6 @@ namespace RaidPlannerBot
         [JsonProperty("exPlanExpirationDays")]
         public int ExPlanExpirationDays { get; set; }
 
-        [JsonProperty("planPersisentStorageLocation")]
-        public string PlanPersisentStorageLocation { get; set; }
-
         [JsonProperty("thumbnailUrl")]
         public string ThumbnailUrl { get; set; }
 
@@ -23,6 +20,9 @@ namespace RaidPlannerBot
 
         [JsonProperty("discordPlaying")]
         public string DiscordPlaying { get; set; }
+
+        [JsonProperty("persisentStorageLocation")]
+        public string PersisentStorageLocation { get; set; }
 
         [JsonProperty("logFile")]
         public string LogFile { get; set; }
@@ -53,12 +53,12 @@ namespace RaidPlannerBot
 
             try
             {
-                if (!Directory.Exists(config.PlanPersisentStorageLocation))
-                    Directory.CreateDirectory(config.PlanPersisentStorageLocation);
+                if (!Directory.Exists(config.PersisentStorageLocation))
+                    Directory.CreateDirectory(config.PersisentStorageLocation);
             }
             catch (Exception e)
             {
-                $"Error when creating persistant storage location at {config.PlanPersisentStorageLocation}: {e.Message}".Log();
+                $"Error when creating persistant storage location at {config.PersisentStorageLocation}: {e.Message}".Log();
                 return false;
             }
 
