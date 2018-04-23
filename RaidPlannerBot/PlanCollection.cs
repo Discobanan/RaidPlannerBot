@@ -76,8 +76,9 @@ namespace RaidPlannerBot
                 {
                     $"Removing expired plan for {plan.Pokemon} at {plan.Location}, {plan.Time}!".Log();
 
-                    plan.Message.DeleteAsync();
                     Remove(guildId, channelId, messageId);
+                    try { plan.Message.DeleteAsync(); }
+                    catch(Exception) { } // Don't care if it fails, it have probably been deleted manually
                 }
             }
         }
