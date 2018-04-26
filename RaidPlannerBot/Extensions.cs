@@ -5,6 +5,8 @@ namespace RaidPlannerBot
 {
     public static class Extensions
     {
+        private static Object logLock = new Object();
+
         public static T Log<T>(this T stuff, bool onlyIfDebug = false)
         {
             bool allowDebugOutput = AppConfig.Shared?.Debug ?? true;
@@ -18,7 +20,12 @@ namespace RaidPlannerBot
                 Console.Out.WriteLine(msg);
 
                 if (!string.IsNullOrWhiteSpace(logFile))
-                    File.AppendAllText(logFile, $"{msg}\n");
+                {
+                    lock (logLock)
+                    {
+                        File.AppendAllText(logFile, $"{msg}\n");
+                    }
+                }
             }
 
             return stuff;
