@@ -12,10 +12,12 @@ namespace RaidPlannerBot
 {
     public class Bot
     {
-        private const int RATE_LIMIT_DELAY = 1500;
+        private const int MS_RATE_LIMIT_DELAY = 1500;
+        private const int SECONDS_RECONNECT_DELAY = 10;
         private const int MINUTES_BETWEEN_EXPIRE_CHECKS = 5;
 
         private readonly DiscordSocketClient discordClient;
+        private bool discordDisconnected = false;
 
         private readonly List<string> factionEmojis = new List<string>() { "mystic", "valor", "instinct" };
         private readonly List<string> numberEmojis = new List<string>() { "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3" };
@@ -34,8 +36,9 @@ namespace RaidPlannerBot
             discordClient.MessageReceived += BotClient_MessageReceived;
             discordClient.ReactionAdded += DiscordClient_ReactionAdded;
             discordClient.ReactionRemoved += DiscordClient_ReactionRemoved;
+            discordClient.Disconnected += DiscordClient_Disconnected;
 
-            // Check for expired plans every minute, and remove expired plans
+            // Check for expired plans every X minute, and remove expired plans
             Task.Run(() =>
             {
                 while (true)
@@ -52,15 +55,42 @@ namespace RaidPlannerBot
 
         public void Start()
         {
-            discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
-            discordClient.StartAsync().Wait();
-            discordClient.SetGameAsync(AppConfig.Shared.DiscordPlaying);
+            bool escPressed = false;
 
-            while (Console.ReadKey(true).Key != ConsoleKey.Escape)
-                "Press ESC to logout the bot!".Log();
-            "ESC pressed, logging out...".Log();
+            while (!escPressed)
+            {
+                discordDisconnected = false;
+                discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
+                discordClient.StartAsync().Wait();
+                discordClient.SetGameAsync(AppConfig.Shared.DiscordPlaying);
 
-            discordClient.StopAsync().Wait();
+                while (!escPressed && !discordDisconnected)
+                {
+                    if (Console.KeyAvailable)
+                    {
+                        escPressed = Console.ReadKey(true).Key == ConsoleKey.Escape;
+                        if (escPressed)
+                        {
+                            "ESC pressed, logging out...".Log();
+                            discordClient.StopAsync().Wait();
+                        }
+                        else
+                        {
+                            // Some random key pressed...
+                            "Press ESC to logout the bot!".Log();
+                        }
+                    }
+
+                    Thread.Sleep(100);
+                }
+
+                if (!escPressed)
+                {
+                    $"Disconnected! Trying to reconnect in {SECONDS_RECONNECT_DELAY} seconds...".Log();
+                    Thread.Sleep(1000 * SECONDS_RECONNECT_DELAY);
+                }
+
+            }
         }
 
         private Task BotClient_Log(LogMessage arg)
@@ -109,23 +139,23 @@ namespace RaidPlannerBot
                     try
                     {
                         await message.DeleteAsync();
-                        await Task.Delay(RATE_LIMIT_DELAY);
+                        await Task.Delay(MS_RATE_LIMIT_DELAY);
 
                         RestUserMessage reply = await message.Channel.SendMessageAsync(string.Empty, false, plan.AsDiscordEmbed());
                         plan.Message = reply;
                         plans.Add(socketChannel.Guild.Id, socketChannel.Id, reply.Id, plan);
-                        await Task.Delay(RATE_LIMIT_DELAY);
+                        await Task.Delay(MS_RATE_LIMIT_DELAY);
 
                         foreach (var factionEmoji in factionEmojis)
                         {
                             await reply.AddReactionAsync(guildEmojis[socketChannel.Guild.Id][factionEmoji]);
-                            await Task.Delay(RATE_LIMIT_DELAY);
+                            await Task.Delay(MS_RATE_LIMIT_DELAY);
                         }
 
                         foreach (var numberEmoji in numberEmojis)
                         {
                             await reply.AddReactionAsync(new Emoji(numberEmoji));
-                            await Task.Delay(RATE_LIMIT_DELAY);
+                            await Task.Delay(MS_RATE_LIMIT_DELAY);
                         }
 
                         await reply.AddReactionAsync(new Emoji(deleteEmoji));
@@ -152,7 +182,7 @@ namespace RaidPlannerBot
                 var editTask = Task.Run(async () =>
                 {
                     await message.DeleteAsync();
-                    await Task.Delay(RATE_LIMIT_DELAY);
+                    await Task.Delay(MS_RATE_LIMIT_DELAY);
                     await plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
                 });
             }
@@ -199,7 +229,6 @@ namespace RaidPlannerBot
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
         }
 
-
         private Task DiscordClient_ReactionRemoved(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
             var socketChannel = channel as SocketGuildChannel;
@@ -226,6 +255,12 @@ namespace RaidPlannerBot
 
             plans.Update(socketChannel.Guild.Id, channel.Id, message.Id, plan);
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
+        }
+
+        private Task DiscordClient_Disconnected(Exception arg)
+        {
+            discordDisconnected = true;
+            return Task.CompletedTask;
         }
 
     }
