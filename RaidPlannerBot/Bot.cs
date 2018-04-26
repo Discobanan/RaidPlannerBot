@@ -13,11 +13,11 @@ namespace RaidPlannerBot
     public class Bot
     {
         private const int MS_RATE_LIMIT_DELAY = 1500;
-        private const int SECONDS_RECONNECT_DELAY = 10;
         private const int MINUTES_BETWEEN_EXPIRE_CHECKS = 5;
+        private const int SECONDS_RECONNECT_TIMEOUT = 60;
 
         private readonly DiscordSocketClient discordClient;
-        private bool discordDisconnected = false;
+        private DateTime? discordDisconnected = null;
 
         private readonly List<string> factionEmojis = new List<string>() { "mystic", "valor", "instinct" };
         private readonly List<string> numberEmojis = new List<string>() { "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3" };
@@ -32,6 +32,7 @@ namespace RaidPlannerBot
             discordClient = new DiscordSocketClient();
 
             discordClient.Log += BotClient_Log;
+            discordClient.Connected += DiscordClient_Connected;
             discordClient.GuildAvailable += BotClient_GuildAvailable;
             discordClient.MessageReceived += BotClient_MessageReceived;
             discordClient.ReactionAdded += DiscordClient_ReactionAdded;
@@ -59,12 +60,12 @@ namespace RaidPlannerBot
 
             while (!escPressed)
             {
-                discordDisconnected = false;
+                discordDisconnected = null;
                 discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
                 discordClient.StartAsync().Wait();
                 discordClient.SetGameAsync(AppConfig.Shared.DiscordPlaying);
 
-                while (!escPressed && !discordDisconnected)
+                while (!escPressed && (discordDisconnected == null || DateTime.Now.Subtract((DateTime)discordDisconnected).TotalSeconds < SECONDS_RECONNECT_TIMEOUT))
                 {
                     if (Console.KeyAvailable)
                     {
@@ -86,8 +87,7 @@ namespace RaidPlannerBot
 
                 if (!escPressed)
                 {
-                    $"Disconnected! Trying to reconnect in {SECONDS_RECONNECT_DELAY} seconds...".Log();
-                    Thread.Sleep(1000 * SECONDS_RECONNECT_DELAY);
+                    $"Disconnected, and didn't manage to automatically reconnect within {SECONDS_RECONNECT_TIMEOUT} seconds! Trying to reconnect...".Log();
                 }
 
             }
@@ -257,9 +257,15 @@ namespace RaidPlannerBot
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
         }
 
+        private Task DiscordClient_Connected()
+        {
+            discordDisconnected = null;
+            return Task.CompletedTask;
+        }
+
         private Task DiscordClient_Disconnected(Exception arg)
         {
-            discordDisconnected = true;
+            discordDisconnected = DateTime.Now;
             return Task.CompletedTask;
         }
 
