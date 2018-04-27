@@ -120,7 +120,7 @@ namespace RaidPlannerBot
 
         private Task BotClient_MessageReceived(SocketMessage message)
         {
-            if (Regex.IsMatch(message.Content, "^!(?:raid|r|exraid|xr) "))
+            if (Regex.IsMatch(message.Content, "^!(?:raid|r|exraid|xr) ", RegexOptions.IgnoreCase))
             {
                 var isExRaid = Regex.IsMatch(message.Content, "^!(?:exraid|xr) ");
                 var plan = Plan.Create(message.Content, message.Author.Username, message.Author.Discriminator, isExRaid);
@@ -168,7 +168,7 @@ namespace RaidPlannerBot
                 });
             }
 
-            if (Regex.IsMatch(message.Content, "^!edit "))
+            if (Regex.IsMatch(message.Content, "^!edit ", RegexOptions.IgnoreCase))
             {
                 var plan = plans.Edit(message.Content);
 
