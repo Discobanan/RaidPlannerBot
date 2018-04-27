@@ -102,29 +102,35 @@ namespace RaidPlannerBot
             foreach (var channelDir in guildDir.GetDirectories())
             {
                 var channelId = ulong.Parse(channelDir.Name);
-
                 var socketChannel = guild.GetChannel(channelId) as ISocketMessageChannel;
 
                 foreach (var messageFile in channelDir.GetFiles())
                 {
-                    if (ulong.TryParse(messageFile.Name, out ulong messageId))
-                    {
-                        var json = File.ReadAllText(messageFile.FullName);
-                        var plan = JsonConvert.DeserializeObject<Plan>(json);
+                    var messageId = ulong.Parse(messageFile.Name);
+                    var key = new Tuple<ulong, ulong, ulong>(guild.Id, channelId, messageId);
 
-                        try
-                        {
-                            RestUserMessage message = (RestUserMessage)socketChannel.GetMessageAsync(messageId).Result;
-                            plan.Message = message;
-                            list.Add(new Tuple<ulong, ulong, ulong>(guild.Id, channelId, messageId), plan);
-                            // TODO: Repost the plan to discord, since reactions might have changed
-                            count++;
-                        }
-                        catch (Exception e)
-                        {
-                            $"Could not read messageId {messageId} from channel {channelId} on guild {guild.Id}: {e.Message}".Log();
-                        }
+                    
+                    
+                    var json = File.ReadAllText(messageFile.FullName);
+                    var plan = JsonConvert.DeserializeObject<Plan>(json);
+
+                    try
+                    {
+                        RestUserMessage message = (RestUserMessage)socketChannel.GetMessageAsync(messageId).Result;
+                        plan.Message = message;
+
+                        if (!list.ContainsKey(key)) list.Add(key, plan);
+                        else list[key] = plan;
+
+                        // TODO: Read reactions and repost the plan to discord, since reactions might have changed
+
+                        count++;
                     }
+                    catch (Exception e)
+                    {
+                        $"Could not read messageId {messageId} from channel {channelId} on guild {guild.Id}: {e.Message}".Log();
+                    }
+
                 }
                 
             }
