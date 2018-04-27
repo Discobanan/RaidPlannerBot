@@ -18,6 +18,7 @@ namespace RaidPlannerBot
 
         private readonly DiscordSocketClient discordClient;
         private DateTime? discordDisconnected = null;
+        private ulong discordBotUserId;
 
         private readonly List<string> factionEmojis = new List<string>() { "mystic", "valor", "instinct" };
         private readonly List<string> numberEmojis = new List<string>() { "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3" };
@@ -193,37 +194,38 @@ namespace RaidPlannerBot
         private Task DiscordClient_ReactionAdded(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
             var socketChannel = channel as SocketGuildChannel;
+            var socketUser = reaction.User.Value as SocketGuildUser;
 
-            if (reaction.UserId == discordClient.CurrentUser.Id || !plans.Contains(socketChannel.Guild.Id, channel.Id, message.Id))
+            if (reaction.UserId == discordBotUserId || !plans.Contains(socketChannel.Guild.Id, channel.Id, message.Id))
                 return Task.CompletedTask;
 
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
-            var user = reaction.User.Value as SocketGuildUser;
-            var username = string.IsNullOrWhiteSpace(user.Nickname) ? user.Username : user.Nickname;
+            
+            var nickname = string.IsNullOrWhiteSpace(socketUser.Nickname) ? socketUser.Username : socketUser.Nickname;
 
-            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(username))
-                plan.Mystic.Add(username);
-            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(username))
-                plan.Valor.Add(username);
-            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(username))
-                plan.Instinct.Add(username);
+            if (reaction.Emote.Name == "mystic" && !plan.Mystic.Contains(nickname))
+                plan.Mystic.Add(nickname);
+            else if (reaction.Emote.Name == "valor" && !plan.Valor.Contains(nickname))
+                plan.Valor.Add(nickname);
+            else if (reaction.Emote.Name == "instinct" && !plan.Instinct.Contains(nickname))
+                plan.Instinct.Add(nickname);
 
             for(int i = 0; i < numberEmojis.Count; i++)
                 if (reaction.Emote.Name == numberEmojis[i])
                     plan.Unknowns = plan.Unknowns + (i + 1);
 
             // TODO: Allow some role to also delete plans, not only the creator
-            if (reaction.Emote.Name == deleteEmoji && user.Username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
+            if (reaction.Emote.Name == deleteEmoji && socketUser.Username == plan.Author && reaction.User.Value.Discriminator == plan.Discriminator)
             {
                 plan.Message.DeleteAsync();
                 plans.Remove(socketChannel.Guild.Id, channel.Id, message.Id);
 
-                $"{username} removed plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
+                $"{nickname} removed plan for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
             }
             else
             {
                 plans.Update(socketChannel.Guild.Id, channel.Id, message.Id, plan);
-                $"{username} added a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
+                $"{nickname} added a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
             }
 
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
@@ -232,26 +234,26 @@ namespace RaidPlannerBot
         private Task DiscordClient_ReactionRemoved(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
             var socketChannel = channel as SocketGuildChannel;
+            var socketUser = reaction.User.Value as SocketGuildUser;
 
-            if (reaction.UserId == discordClient.CurrentUser.Id || !plans.Contains(socketChannel.Guild.Id, channel.Id, message.Id))
+            if (reaction.UserId == discordBotUserId || !plans.Contains(socketChannel.Guild.Id, channel.Id, message.Id))
                 return Task.CompletedTask;
 
             var plan = plans.Get(socketChannel.Guild.Id, channel.Id, message.Id);
-            var user = reaction.User.Value as SocketGuildUser;
-            var username = string.IsNullOrWhiteSpace(user.Nickname) ? user.Username : user.Nickname;
+            var nickname = string.IsNullOrWhiteSpace(socketUser.Nickname) ? socketUser.Username : socketUser.Nickname;
 
-            if (reaction.Emote.Name == "mystic" && plan.Mystic.Contains(username))
-                plan.Mystic.Remove(username);
-            else if (reaction.Emote.Name == "valor" && plan.Valor.Contains(username))
-                plan.Valor.Remove(username);
-            else if (reaction.Emote.Name == "instinct" && plan.Instinct.Contains(username))
-                plan.Instinct.Remove(username);
+            if (reaction.Emote.Name == "mystic" && plan.Mystic.Contains(nickname))
+                plan.Mystic.Remove(nickname);
+            else if (reaction.Emote.Name == "valor" && plan.Valor.Contains(nickname))
+                plan.Valor.Remove(nickname);
+            else if (reaction.Emote.Name == "instinct" && plan.Instinct.Contains(nickname))
+                plan.Instinct.Remove(nickname);
 
             for (int i = 0; i < numberEmojis.Count; i++)
                 if (reaction.Emote.Name == numberEmojis[i])
                     plan.Unknowns = plan.Unknowns - (i + 1);
 
-            $"{username} removed a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
+            $"{nickname} removed a reaction for {plan.Pokemon} at {plan.Location}, {plan.Time}".Log(true);
 
             plans.Update(socketChannel.Guild.Id, channel.Id, message.Id, plan);
             return plan.Message.ModifyAsync(m => m.Embed = plan.AsDiscordEmbed());
@@ -260,6 +262,10 @@ namespace RaidPlannerBot
         private Task DiscordClient_Connected()
         {
             discordDisconnected = null;
+
+            if (discordBotUserId == 0)
+                discordBotUserId = discordClient.CurrentUser.Id;
+
             return Task.CompletedTask;
         }
 
