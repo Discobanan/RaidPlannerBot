@@ -5,6 +5,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Discord.WebSocket;
 using Discord.Rest;
+using System.Text.RegularExpressions;
 
 namespace RaidPlannerBot
 {
@@ -41,24 +42,50 @@ namespace RaidPlannerBot
             return list[new Tuple<ulong, ulong, ulong>(guildId, channelId, messageId)];
         }
 
-        public Plan Edit(string message)
+        public Plan Edit(string channel, string message)
         {
-            var messageParts = message.Split(" ");
+			var oldFormat = new Regex(@"^!edit +(?<id>[0-9]+) +(?<value>\S+)$", RegexOptions.IgnoreCase);
+			var newFormat = new Regex(@"^!edit (?<command>time|boss|location) +(?<id>[0-9]+) +(?<value>.+)$", RegexOptions.IgnoreCase);
 
-            if (messageParts.Length < 3)
-                return null;
+			var oldFormatMatch = oldFormat.Match(message);
+			var newFormatMatch = newFormat.Match(message);
 
-            if (!int.TryParse(messageParts[1], out int id))
-                return null;
+			if (!oldFormatMatch.Success && !newFormatMatch.Success)
+				return null;
 
-            var newTime = messageParts[2];
+			int id;
+			string command;
+			string value;
 
-            var plan = list.Where(x => x.Value.Id == id).Select(x => x.Value).FirstOrDefault();
+			if (oldFormatMatch.Success)
+			{
+				int.TryParse(oldFormatMatch.Groups["id"].Value, out id);
+				command = "time";
+				value = oldFormatMatch.Groups["value"].Value;
+			}
+			else
+			{
+				int.TryParse(newFormatMatch.Groups["id"].Value, out id);
+				command = newFormatMatch.Groups["command"].Value.ToLower();
+				value = newFormatMatch.Groups["value"].Value;
+			}
 
-            if (plan != null)
-                plan.Time = newTime;
+			var plan = list.Where(x => x.Value.Id == id).Select(x => x.Value).FirstOrDefault();
 
-            return plan;
+			if (plan == null)
+				return null;
+
+			if (command == "time") plan.Time = value;
+			else if (command == "boss") plan.Pokemon = value;
+			else if (command == "location")
+			{
+				var gym = AppConfig.Shared.GetGymNameFromSearchString(channel, value);
+				plan.Latitude = gym?.Latitude ?? 0;
+				plan.Longitude = gym?.Longitude ?? 0;
+				plan.Location = gym?.Name ?? value;
+			}
+
+			return plan;
         }
 
         public void DeleteExpired()

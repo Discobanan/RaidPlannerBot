@@ -14,8 +14,8 @@ namespace RaidPlannerBot
                 bot.Start();
             }
 
-            "Press any key to terminate process...".Log();
-            Console.ReadKey(true);
-        }
+			"Press any key to terminate process...".Log();
+			Console.ReadKey(true);
+		}
     }
 }

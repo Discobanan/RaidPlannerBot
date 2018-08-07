@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -30,7 +31,17 @@ namespace RaidPlannerBot
         [JsonProperty("debug")]
         public bool Debug { get; set; }
 
-        public static AppConfig Shared;
+        [JsonProperty("execOnDisconnectFilename")]
+        public string ExecOnDisconnectFilename { get; set; }
+
+        [JsonProperty("execOnDisconnectArguments")]
+        public string ExecOnDisconnectArguments { get; set; }
+
+		[JsonProperty("locations")]
+		public List<Location> Locations { get; set; }
+
+
+		public static AppConfig Shared;
 
         public static bool Load(string configFile)
         {
@@ -71,5 +82,110 @@ namespace RaidPlannerBot
             Shared = config;
             return true;
         }
-    }
+
+		public Gym GetGymNameFromSearchString(string channel, string searchString)
+		{
+			foreach (var location in Locations)
+			{
+				if (!location.Channels.Contains(channel))
+					continue;
+
+				// Exact matches on name
+				foreach (var gym in location.Gyms)
+					if (string.Equals(gym.Name, searchString, StringComparison.InvariantCultureIgnoreCase))
+						return gym;
+
+				// Exact match on alias
+				foreach (var gym in location.Gyms)
+					foreach (var alias in gym.Aliases)
+						if (string.Equals(alias, searchString, StringComparison.InvariantCultureIgnoreCase))
+							return gym;
+
+				int partialMatches;
+				Gym partialMatchedGym;
+
+				// StartsWith match on name
+				partialMatches = 0;
+				partialMatchedGym = null;
+				foreach (var gym in location.Gyms)
+				{
+					if (gym.Name.StartsWith(searchString, StringComparison.InvariantCultureIgnoreCase))
+					{
+						partialMatchedGym = gym;
+						partialMatches++;
+					}
+				}
+				if (partialMatches == 1) return partialMatchedGym;
+
+				// StartsWith match on alias
+				partialMatches = 0;
+				partialMatchedGym = null;
+				foreach (var gym in location.Gyms)
+				{
+					foreach (var alias in gym.Aliases)
+					{
+						if (alias.StartsWith(searchString, StringComparison.InvariantCultureIgnoreCase))
+						{
+							partialMatchedGym = gym;
+							partialMatches++;
+						}
+					}
+				}
+				if (partialMatches == 1) return partialMatchedGym;
+
+				// Partial match on name
+				partialMatches = 0;
+				partialMatchedGym = null;
+				foreach (var gym in location.Gyms)
+				{
+					if (gym.Name.IndexOf(searchString, StringComparison.InvariantCultureIgnoreCase) >= 0)
+					{
+						partialMatchedGym = gym;
+						partialMatches++;
+					}
+				}
+				if (partialMatches == 1) return partialMatchedGym;
+
+				// Partial match on alias
+				partialMatches = 0;
+				partialMatchedGym = null;
+				foreach (var gym in location.Gyms)
+				{
+					foreach (var alias in gym.Aliases)
+					{
+						if (alias.IndexOf(searchString, StringComparison.InvariantCultureIgnoreCase) >= 0)
+						{
+							partialMatchedGym = gym;
+							partialMatches++;
+						}
+					}
+				}
+				if (partialMatches == 1) return partialMatchedGym;
+
+			}
+			return null;
+		}
+	}
+
+	public class Location
+	{
+		[JsonProperty("channels")]
+		public List<string> Channels { get; set; }
+		[JsonProperty("gyms")]
+		public List<Gym> Gyms { get; set; }
+	}
+
+	public class Gym
+	{
+		[JsonProperty("name")]
+		public string Name { get; set; }
+		[JsonProperty("latitude")]
+		public double Latitude { get; set; }
+		[JsonProperty("longitude")]
+		public double Longitude { get; set; }
+		[JsonProperty("aliases")]
+		public string[] Aliases { get; set; }
+
+	}
+
 }

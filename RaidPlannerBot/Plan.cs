@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Discord.Rest;
 using Newtonsoft.Json;
+using System.Globalization;
+using RaidPlannerBot.Data;
 
 namespace RaidPlannerBot
 {
@@ -15,8 +17,10 @@ namespace RaidPlannerBot
         public string Pokemon { get; set; }
         public string Time { get; set; }
         public string Day { get; set; }
-        public string Location { get; set; }
-        public string Author { get; set; }
+		public string Location { get; set; }
+		public double Latitude { get; set; }
+		public double Longitude { get; set; }
+		public string Author { get; set; }
         public string Discriminator { get; set; }
         public List<string> Mystic { get; set; }
         public List<string> Valor { get; set; }
@@ -41,41 +45,58 @@ namespace RaidPlannerBot
             this.Instinct = new List<string>();
         }
 
-        public static Plan Create(string message, string author, string discriminator, bool isExRaid)
+        public static Plan Create(string channel, string message, string author, string discriminator, bool isExRaid)
         {
             var messageParts = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 
             if ((!isExRaid && messageParts.Length < 4) || (isExRaid && messageParts.Length < 5))
                 return null;
 
-            return new Plan()
+			var location = String.Join(" ", messageParts.Skip(isExRaid ? 4 : 3).ToArray());
+			var gym = AppConfig.Shared.GetGymNameFromSearchString(channel, location);
+
+			return new Plan()
             {
                 Pokemon = messageParts[1],
                 Time = messageParts[2],
-                Location = String.Join(" ", messageParts.Skip(isExRaid ? 4 : 3).ToArray()),
+                Location = gym?.Name ?? location,
                 Author = author,
                 Discriminator = discriminator,
                 IsExRaid = isExRaid,
                 Day = isExRaid ? messageParts[3] : null,
-            };
+				Latitude = gym?.Latitude ?? 0,
+				Longitude = gym?.Longitude ?? 0,
+			};
         }
 
         public Embed AsDiscordEmbed()
         {
-            var title = IsExRaid ? $"EX-RAID: {this.Pokemon}" : $"Boss: {this.Pokemon}";
+			NumberFormatInfo nfi = new NumberFormatInfo();
+			nfi.NumberDecimalSeparator = ".";
+			var latString = Latitude.ToString(nfi);
+			var lngString = Longitude.ToString(nfi);
+			var mapsLink = $"https://www.google.com/maps/?q={latString},{lngString}";
 
-            var description = $"Time: {this.Time}\nLocation: {this.Location}";
-            if (IsExRaid) description += $"\nDay: {this.Day}";
+			var cpAt20 = GameMaster.GetCpAtLevel(this.Pokemon, 20);
+			var cpAt25 = GameMaster.GetCpAtLevel(this.Pokemon, 25);
 
-            var footer = $"Total: {this.Total} | Id: {this.Id} | Created by: {this.Author}#{this.Discriminator}";
+			var title = IsExRaid ? $"EX-RAID: {this.Pokemon.Capitalize()}" : $"Boss: {this.Pokemon.Capitalize()}";
+
+			var description = string.Empty;
+			description += $"Time: {this.Time}";
+			description += Latitude != 0 && Longitude != 0 ? $"\nLocation: [{this.Location}]({mapsLink})" : $"\nLocation: {this.Location}";
+			if (IsExRaid) description += $"\nDay: {this.Day}";
+			if (cpAt20 > 0 && cpAt25 > 0) description += $"\nCP at max IV: {cpAt20} / {cpAt25}";
+
+			var footer = $"Total: {this.Total} | Id: {this.Id} | Created by: {this.Author}#{this.Discriminator}";
 
             var embedBuilder = new EmbedBuilder();
             embedBuilder.WithColor(Color.Red);
             embedBuilder.WithTitle(title);
             embedBuilder.WithDescription(description);
-            embedBuilder.WithFooter(footer);
+			embedBuilder.WithFooter(footer);
 
-            var pokemonName = this.Pokemon.ToLower();
+			var pokemonName = this.Pokemon.ToLower();
             if (Pokemons.Name.ContainsKey(pokemonName))
             {
                 var thumbnailUrl = AppConfig.Shared.ThumbnailUrl.Replace("{pokemonId}", Pokemons.Name[pokemonName].ToString());

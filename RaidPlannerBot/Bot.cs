@@ -3,6 +3,7 @@ using Discord.Rest;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -14,11 +15,11 @@ namespace RaidPlannerBot
     {
         private const int MS_RATE_LIMIT_DELAY = 1500;
         private const int MINUTES_BETWEEN_EXPIRE_CHECKS = 5;
-        private const int SECONDS_RECONNECT_TIMEOUT = 60;
+        private const int MINUTES_BETWEEN_DISCONNECTION_CHECKS = 5;
 
         private readonly DiscordSocketClient discordClient;
-        private DateTime? discordDisconnected = null;
         private ulong discordBotUserId;
+        private DateTime? disconnectedDate = null;
 
         private readonly List<string> factionEmojis = new List<string>() { "mystic", "valor", "instinct" };
         private readonly List<string> numberEmojis = new List<string>() { "\u0031\u20E3", "\u0032\u20E3", "\u0033\u20E3", "\u0034\u20E3" };
@@ -53,45 +54,46 @@ namespace RaidPlannerBot
                     Thread.Sleep(1000 * 60 * MINUTES_BETWEEN_EXPIRE_CHECKS);
                 }
             });
+
+            // Check for 
+            Task.Run(() =>
+            {
+                while (true)
+                {
+                    "Checking if disconnected...".Log(true);
+
+                    if (this.disconnectedDate.HasValue)
+                    {
+                        var minutesSinceDisconnect = DateTime.Now.Subtract(this.disconnectedDate.Value).TotalMinutes;
+
+                        $"Disconnected {minutesSinceDisconnect} minutes ago!".Log();
+
+                        if (minutesSinceDisconnect > MINUTES_BETWEEN_DISCONNECTION_CHECKS && !string.IsNullOrWhiteSpace(AppConfig.Shared.ExecOnDisconnectFilename))
+                        {
+                            Process.Start(AppConfig.Shared.ExecOnDisconnectFilename, AppConfig.Shared.ExecOnDisconnectArguments);
+                        }
+                    }
+                    else
+                    {
+                        "Not disconnected!".Log(true);
+                    }
+
+                    Thread.Sleep(1000 * 60 * MINUTES_BETWEEN_DISCONNECTION_CHECKS);
+                }
+            });
         }
 
         public void Start()
         {
-            bool escPressed = false;
+            discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
+            discordClient.StartAsync().Wait();
+            discordClient.SetGameAsync(AppConfig.Shared.DiscordPlaying);
 
-            while (!escPressed)
-            {
-                discordDisconnected = null;
-                discordClient.LoginAsync(TokenType.Bot, AppConfig.Shared.DiscordBotToken).Wait();
-                discordClient.StartAsync().Wait();
-                discordClient.SetGameAsync(AppConfig.Shared.DiscordPlaying);
+            while (Console.ReadKey(true).Key != ConsoleKey.Escape)
+                "Press ESC to logout the bot!".Log();
+            "ESC pressed, logging out...".Log();
 
-                while (!escPressed && (discordDisconnected == null || DateTime.Now.Subtract((DateTime)discordDisconnected).TotalSeconds < SECONDS_RECONNECT_TIMEOUT))
-                {
-                    if (Console.KeyAvailable)
-                    {
-                        escPressed = Console.ReadKey(true).Key == ConsoleKey.Escape;
-                        if (escPressed)
-                        {
-                            "ESC pressed, logging out...".Log();
-                            discordClient.StopAsync().Wait();
-                        }
-                        else
-                        {
-                            // Some random key pressed...
-                            "Press ESC to logout the bot!".Log();
-                        }
-                    }
-
-                    Thread.Sleep(100);
-                }
-
-                if (!escPressed)
-                {
-                    $"Disconnected, and didn't manage to automatically reconnect within {SECONDS_RECONNECT_TIMEOUT} seconds! Trying to reconnect...".Log();
-                }
-
-            }
+            discordClient.StopAsync().Wait();
         }
 
         private Task BotClient_Log(LogMessage arg)
@@ -123,7 +125,7 @@ namespace RaidPlannerBot
             if (Regex.IsMatch(message.Content, "^!(?:raid|r|exraid|xr) ", RegexOptions.IgnoreCase))
             {
                 var isExRaid = Regex.IsMatch(message.Content, "^!(?:exraid|xr) ");
-                var plan = Plan.Create(message.Content, message.Author.Username, message.Author.Discriminator, isExRaid);
+                var plan = Plan.Create(message.Channel.Name, message.Content, message.Author.Username, message.Author.Discriminator, isExRaid);
 
                 if (plan == null)
                 {
@@ -170,7 +172,7 @@ namespace RaidPlannerBot
 
             if (Regex.IsMatch(message.Content, "^!edit ", RegexOptions.IgnoreCase))
             {
-                var plan = plans.Edit(message.Content);
+                var plan = plans.Edit(message.Channel.Name, message.Content);
 
                 if (plan == null)
                 {
@@ -261,7 +263,7 @@ namespace RaidPlannerBot
 
         private Task DiscordClient_Connected()
         {
-            discordDisconnected = null;
+            this.disconnectedDate = null;
 
             if (discordBotUserId == 0)
                 discordBotUserId = discordClient.CurrentUser.Id;
@@ -271,7 +273,8 @@ namespace RaidPlannerBot
 
         private Task DiscordClient_Disconnected(Exception arg)
         {
-            discordDisconnected = DateTime.Now;
+            this.disconnectedDate = DateTime.Now;
+
             return Task.CompletedTask;
         }
 

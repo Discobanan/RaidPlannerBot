@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace RaidPlannerBot
+namespace RaidPlannerBot.Data
 {
-    public class Pokemons
+    public static class Pokemons
     {
         public static Dictionary<string, int> Name = new Dictionary<string, int>() {
             { "bulbasaur", 1 },
