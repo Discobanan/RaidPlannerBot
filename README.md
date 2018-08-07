@@ -61,7 +61,7 @@ The following command are available:
 
 * `!raid pokemon time location` for creating raid-plans. `!r` is the same thing as `!raid`.
 * `!exraid pokemon time day location` for creating ex-raid-plans. `!xr` is the same thing as `!exraid`.
-* `!edit id time` for editing the time of a raid.
+* `!edit what id value` for editing the time, location or boss of a raid.
 
 ### Creating a raid plan
 
@@ -75,13 +75,19 @@ Type `!exraid pokemon time day location` in a channel where the bot is allowed, 
 
 If you are going to attend the raid, press the reaction corresponding to your faction. If you bring extra devices, also press the number-reaction that matches the number of extra devices you are bringing.
 
-### Change planned time
+### Change plan
 
-To edit the time of an existing plan, type `!edit id time`, where `id` is the id that the bot have assigned to the plan, for example `!edit 7624 16:00`
+The following properties of  an existing plan can be changed:
+
+- time
+- boss
+- location
+
+To edit an existing plan, type `!edit what id value`, where `what` is one of the above properties, `id` is the id that the bot have assigned to the plan, and `what` is the new value to use, for example `!edit time 7624 16:00` or `!edit boss 7624 tyranitar`
 
 ### Delete raid plan
 
-Only the creator of the plan can delete it, and it is done by pressing the red-cross-reaction. Plans will however be automatically deleted depending on what type it is and the values set in `AppConfig.json`
+Only the creator of the plan can delete it, and it is done by pressing the red-cross-reaction. Plans will however be automatically deleted depending on what type it is and the values set in `AppConfig.json`. By default, regular raid-plans are deleted after 2 hours, and EX-raids after 10 days.
 
 ## Support
 
