@@ -261,6 +261,7 @@ namespace RaidPlannerBot.Data
 		public string ParentPokemonId { get; set; }
 		public string BuddySize { get; set; }
 		public string Rarity { get; set; }
+		public string Form { get; set; }
 	}
 
 	public class MoveSettingsModel

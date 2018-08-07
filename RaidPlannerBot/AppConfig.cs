@@ -42,8 +42,10 @@ namespace RaidPlannerBot
 
 
 		public static AppConfig Shared;
+		public static List<string> AlolanPrefixes = new List<string> { "a", "alola", "alolan" };
 
-        public static bool Load(string configFile)
+
+		public static bool Load(string configFile)
         {
             if (!File.Exists(configFile))
             {

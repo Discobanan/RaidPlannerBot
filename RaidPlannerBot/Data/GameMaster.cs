@@ -47,10 +47,19 @@ namespace RaidPlannerBot.Data
 		{
 			if (attack > 0 || defense > 0 || stamina > 0)
 			{
+				var nameParts = pokemonName.Split('-');
+
+				string formName = null;
+				if (AppConfig.AlolanPrefixes.Contains(nameParts[0]))
+				{
+					pokemonName = String.Join("-", nameParts.Skip(1).ToArray()).ToUpper();
+					formName = pokemonName + "_ALOLA";
+				}
+
 				var baseStats = GameMaster
 					.Data
 					.ItemTemplates
-					.Where(x => x.PokemonSettings?.PokemonId == pokemonName.ToUpper())
+					.Where(x => x.PokemonSettings?.PokemonId == pokemonName.ToUpper() && x.PokemonSettings?.Form == formName)
 					.Select(x => x.PokemonSettings.Stats)
 					.FirstOrDefault();
 

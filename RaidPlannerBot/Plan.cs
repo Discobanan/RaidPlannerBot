@@ -96,10 +96,10 @@ namespace RaidPlannerBot
             embedBuilder.WithDescription(description);
 			embedBuilder.WithFooter(footer);
 
-			var pokemonName = this.Pokemon.ToLower();
-            if (Pokemons.Name.ContainsKey(pokemonName))
+			var pokemonId = Pokemons.GetIdFromName(this.Pokemon);
+            if (!string.IsNullOrEmpty(pokemonId))
             {
-                var thumbnailUrl = AppConfig.Shared.ThumbnailUrl.Replace("{pokemonId}", Pokemons.Name[pokemonName].ToString());
+				var thumbnailUrl = AppConfig.Shared.ThumbnailUrl.Replace("{pokemonId}", pokemonId);
                 if (Uri.IsWellFormedUriString(thumbnailUrl, UriKind.Absolute))
                 {
                     embedBuilder.WithThumbnailUrl(thumbnailUrl);

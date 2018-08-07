@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RaidPlannerBot.Data
 {
     public static class Pokemons
     {
-        public static Dictionary<string, int> Name = new Dictionary<string, int>() {
+		private static Dictionary<string, int> Name = new Dictionary<string, int>() {
             { "bulbasaur", 1 },
             { "ivysaur", 2 },
             { "venusaur", 3 },
@@ -727,5 +729,25 @@ namespace RaidPlannerBot.Data
             { "hoopa", 720 },
             { "volcanion", 721 }
         };
+
+		public static string GetIdFromName(string name)
+		{
+			var lowName = name.ToLower();
+			var nameParts = lowName.Split('-');
+
+			var alolanPrefix = string.Empty;
+			if (AppConfig.AlolanPrefixes.Contains(nameParts[0]))
+			{
+				lowName = String.Join('-', nameParts.Skip(1).ToArray());
+				alolanPrefix = "a";
+			}
+
+			if (Name.ContainsKey(lowName))
+			{
+				return alolanPrefix + Name[lowName];
+			}
+
+			return null;
+		}
     }
 }
